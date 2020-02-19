@@ -61,6 +61,7 @@ import edu.mines.jtk.util.Stopwatch;
  * equal to the size of that screen.
  * @author Dave Hale, Colorado School of Mines
  * @version 2005.05.29
+ * @version 2020.02.19 JB West Smaller NEAR clip for better zoomability
  */
 public class OrbitView extends View {
 
@@ -309,6 +310,8 @@ public class OrbitView extends View {
       double aspect = (double)w/(double)h;
       double znear = max(d-maxscale*r,0.1);
       double zfar  = max(d+maxscale*r,100.0*znear);
+      // jbw to much near clipping
+      znear = znear / 10.;
       viewToCube = Matrix44.perspective(fovy,aspect,znear,zfar);
       distance = d;
     } else {

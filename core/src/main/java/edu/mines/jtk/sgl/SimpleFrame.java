@@ -1,21 +1,15 @@
-/****************************************************************************
-Copyright 2009, Colorado School of Mines and others.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+/***************************************************************************
+Copyright (c) 2009, Colorado School of Mines and others. All rights reserved.
+This program and accompanying materials are made available under the terms of
+the Common Public License - v1.0, which accompanies this distribution, and is
+available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package edu.mines.jtk.sgl;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
@@ -25,12 +19,14 @@ import edu.mines.jtk.dsp.Sampling;
  * A simple frame for 3D graphics.
  * @author Chris Engelsma and Dave Hale, Colorado School of Mines.
  * @version 2010.12.09
+ * @version 2019.02.18 JB West change default close operation to ask to exit.
+ *                     JB West added support for wiggle-trace display
  */
 public class SimpleFrame extends JFrame {
 
   /**
    * Constructs a simple frame with default parameters.
-   * Axes orientation defaults to x-right, y-out and z-down.
+   * Axes orientation defaults to x-right, y-top and z-down.
    */
   public SimpleFrame() {
     this(null,null);
@@ -104,12 +100,28 @@ public class SimpleFrame extends JFrame {
 
     ovm.setActive(true);
 
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+    // jbw this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     this.setSize(new Dimension(SIZE,SIZE));
     this.add(_canvas,BorderLayout.CENTER);
     this.add(_toolBar,BorderLayout.WEST);
     this.setJMenuBar(menuBar);
     this.setVisible(true);
+    addWindowListener(new WindowAdapter(){
+            public void windowClosing(WindowEvent evt){
+                int x = JOptionPane.showConfirmDialog(null, 
+                    "Do you want to exit the program?", "Confirm ?",
+                    JOptionPane.YES_NO_CANCEL_OPTION);
+
+                if(x == JOptionPane.YES_OPTION) 
+                    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		else if(x == JOptionPane.NO_OPTION) 
+                    setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		else if(x == JOptionPane.CANCEL_OPTION) {
+                    setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		}
+            }
+        });
   }
 
   /**
@@ -165,7 +177,7 @@ public class SimpleFrame extends JFrame {
    * @param sy sampling of y coordinates; may be non-uniform.
    * @param z array[nx][ny] of z coordinates z = f(x,y).
    */
-  public static SimpleFrame asTriangles(
+  public SimpleFrame asTriangles(
     boolean vn, Sampling sx, Sampling sy, float[][] z)
   {
     return asTriangles(new TriangleGroup(vn,sx,sy,z));
@@ -181,7 +193,7 @@ public class SimpleFrame extends JFrame {
    * @param g array[nx][ny] of green color components.
    * @param b array[nx][ny] of blue color components.
    */
-  public static SimpleFrame asTriangles(
+  public SimpleFrame asTriangles(
     boolean vn, Sampling sx, Sampling sy, float[][] z,
     float[][] r, float[][] g, float[][] b)
   {
@@ -244,6 +256,17 @@ public class SimpleFrame extends JFrame {
     sf.getOrbitView().setWorldSphere(ipg.getBoundingSphere(true));
     return sf;
   }
+  /**
+   * Returns a new simple frame with an wiggle image panel group.
+   * @param ipg an image panel group.
+   * @return the simple frame.
+   */
+  public static SimpleFrame asImagePanelsW(ImagePanelGroupW ipg) {
+    SimpleFrame sf = new SimpleFrame();
+    sf.addImagePanelsW(ipg);
+    sf.getOrbitView().setWorldSphere(ipg.getBoundingSphere(true));
+    return sf;
+  }
 
   /**
    * Adds a triangle group with specified vertex coordinates.
@@ -295,6 +318,17 @@ public class SimpleFrame extends JFrame {
                           new Sampling(f.length),
                           f);
   }
+  /**
+   * Adds an image panel group to a simple frame from a given 3D array
+   * @param f a 3D array.
+   * @return the image panel group.
+   */
+  public ImagePanelGroupW addImagePanelsW(float[][][] f) {
+    return addImagePanelsW(new Sampling(f[0][0].length),
+                          new Sampling(f[0].length),
+                          new Sampling(f.length),
+                          f);
+  }
 
   /**
    * Adds an image panel group to a simple frame from given samplings and
@@ -309,6 +343,19 @@ public class SimpleFrame extends JFrame {
           Sampling s1, Sampling s2, Sampling s3, float[][][] f) {
     return addImagePanels(new ImagePanelGroup(s1,s2,s3,f));
   }
+  /**
+   * Adds an image panel group to a simple frame from given samplings and
+   * a 3D array.
+   * @param s1 sampling in the 1st dimension (Z).
+   * @param s2 sampling in the 2nd dimension (Y).
+   * @param s3 sampling in the 3rd dimension (X).
+   * @param f a 3D array.
+   * @return the image panel group.
+   */
+  public ImagePanelGroupW addImagePanelsW(
+          Sampling s1, Sampling s2, Sampling s3, float[][][] f) {
+    return addImagePanelsW(new ImagePanelGroupW(s1,s2,s3,f));
+  }
 
   /**
    * Adds an image panel group to a simple frame from a given image panel
@@ -317,6 +364,16 @@ public class SimpleFrame extends JFrame {
    * @return the attached image panel group.
    */
   public ImagePanelGroup addImagePanels(ImagePanelGroup ipg) {
+    _world.addChild(ipg);
+    return ipg;
+  }
+  /**
+   * Adds an image panel group to a simple frame from a given image panel
+   * group.
+   * @param ipg an image panel group.
+   * @return the attached image panel group.
+   */
+  public ImagePanelGroupW addImagePanelsW(ImagePanelGroupW ipg) {
     _world.addChild(ipg);
     return ipg;
   }
